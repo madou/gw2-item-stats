@@ -1,0 +1,21 @@
+{
+  "name": "gw2itemstats",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/request": "0.0.41",
+    "ts-node": "^2.1.0",
+    "typescript": "^2.2.1"
+  },
+  "dependencies": {
+    "limiter": "^1.1.0",
+    "lodash": "^4.17.4",
+    "request": "^2.80.0"
+  }
+}

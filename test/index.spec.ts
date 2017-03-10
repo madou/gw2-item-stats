@@ -1,4 +1,4 @@
-import { queryItemAttributes } from './index';
+import { queryItemAttributes } from '..';
 
 queryItemAttributes('ring', 'ascended', 80)
 .then((v) => {

@@ -1,5 +1,5 @@
 import { loadDb } from './loadDb';
-export { TYPES, RARITIES } from './database';
+export { TYPES, RARITIES } from './types';
 
 export type ItemType =
   "helm" | "shoulders" | "gloves" | "coat" | "leggings" |

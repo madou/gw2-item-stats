@@ -2,6 +2,7 @@ import * as request from 'request';
 import { Observable } from 'rxjs';
 import { camelCase } from 'lodash';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
+import { TYPES, RARITIES } from './types';
 
 const RateLimiter = require('limiter').RateLimiter;
 var limiter = new RateLimiter(10, 1500); // at most 5 request every 1500 ms
@@ -33,48 +34,6 @@ async function initCache() {
     writeFileSync(CACHE_FILE, JSON.stringify(CACHE));
   }
 }
-
-export const TYPES = [
-  "helm",
-  "shoulders",
-  "gloves",
-  "coat",
-  "leggings",
-  "boots",
-  "back item",
-  "accessory",
-  "amulet",
-  "ring",
-  "axe",
-  "dagger",
-  "focus",
-  "mace",
-  "pistol",
-  "scepter",
-  "shield",
-  "sword",
-  "torch",
-  "warhorn",
-  "greatsword",
-  "hammer",
-  "harpoon gun",
-  "longbow",
-  "rifle",
-  "short bow",
-  "spear",
-  "staff",
-  "trident",
-];
-
-export  const RARITIES = [
-  "basic",
-  "fine",
-  "masterwork",
-  "rare",
-  "exotic",
-  "ascended",
-  "legendary",
-];
 
 function storeCache(itemType: string, rarity: string, itemLevel: string, value: any) {
   CACHE[itemType][rarity][itemLevel] = value;

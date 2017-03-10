@@ -3,15 +3,18 @@
     "target": "es5",
     "module": "commonjs",
     "moduleResolution": "node",
-    "sourceMap": true,
-    "declaration": true,
+    "sourceMap": false,
+    "declaration": false,
     "noImplicitAny": false,
     "allowSyntheticDefaultImports": false,
     "pretty": true,
     "removeComments": true,
-    "lib": ["es6"],
+    "lib": ["es6", "dom"],
     "types": [
       "@types/node"
     ]
-  }
+  },
+  "files": [
+	"src/index.ts"
+  ]
 }

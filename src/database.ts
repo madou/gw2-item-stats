@@ -2,6 +2,7 @@ import * as request from 'request';
 import { Observable } from 'rxjs';
 import { camelCase } from 'lodash';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
+
 const RateLimiter = require('limiter').RateLimiter;
 var limiter = new RateLimiter(10, 1500); // at most 5 request every 1500 ms
 const throttledRequest = function(...requestArgs) {
@@ -32,6 +33,48 @@ async function initCache() {
     writeFileSync(CACHE_FILE, JSON.stringify(CACHE));
   }
 }
+
+export const TYPES = [
+  "helm",
+  "shoulders",
+  "gloves",
+  "coat",
+  "leggings",
+  "boots",
+  "back item",
+  "accessory",
+  "amulet",
+  "ring",
+  "axe",
+  "dagger",
+  "focus",
+  "mace",
+  "pistol",
+  "scepter",
+  "shield",
+  "sword",
+  "torch",
+  "warhorn",
+  "greatsword",
+  "hammer",
+  "harpoon gun",
+  "longbow",
+  "rifle",
+  "short bow",
+  "spear",
+  "staff",
+  "trident",
+];
+
+export  const RARITIES = [
+  "basic",
+  "fine",
+  "masterwork",
+  "rare",
+  "exotic",
+  "ascended",
+  "legendary",
+];
 
 function storeCache(itemType: string, rarity: string, itemLevel: string, value: any) {
   CACHE[itemType][rarity][itemLevel] = value;
@@ -169,50 +212,10 @@ function promiseForObjectDeep(object, nest) {
 }
 
 function buildSkeleton(pullValues: boolean = false) {
-  const types = [
-    "helm",
-    "shoulders",
-    "gloves",
-    "coat",
-    "leggings",
-    "boots",
-    "back item",
-    "accessory",
-    "amulet",
-    "ring",
-    "axe",
-    "dagger",
-    "focus",
-    "mace",
-    "pistol",
-    "scepter",
-    "shield",
-    "sword",
-    "torch",
-    "warhorn",
-    "greatsword",
-    "hammer",
-    "harpoon gun",
-    "longbow",
-    "rifle",
-    "short bow",
-    "spear",
-    "staff",
-    "trident",
-  ];
-  const rarities = [
-    "basic",
-    "fine",
-    "masterwork",
-    "rare",
-    "exotic",
-    "ascended",
-    "legendary",
-  ]
   const itemLevels = Array.from(Array(80).keys());
-  const allInfo = types.reduce((obj, weaponType: string) => {
+  const allInfo = TYPES.reduce((obj, weaponType: string) => {
     return Object.assign(obj, {
-      [weaponType]: rarities.reduce((itemObj, rarityType: string) => {
+      [weaponType]: RARITIES.reduce((itemObj, rarityType: string) => {
         return Object.assign(itemObj, {
           [rarityType]: itemLevels.reduce((rarityObj, itemLevel: number) => {
             return Object.assign(rarityObj, {
@@ -232,18 +235,8 @@ function buildSkeleton(pullValues: boolean = false) {
   }
 }
 
-function fetchAll() {
-  return buildSkeleton(true);
+export function fetchDb() {
+  return initCache().then(() => buildSkeleton(true));
 }
 
-async function main() {
-  await initCache();
-
-  const allInfo = await fetchAll();
-  writeFileSync("./itemstat-db.json", JSON.stringify(allInfo));
-
-  //const variables = await queryTemplate('short bow', 'fine', 80);
-  //console.log(variables);
-}
-
-main().then(() => console.log('done'), (e) => console.error(e));
+export default fetchDb;

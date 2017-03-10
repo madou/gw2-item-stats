@@ -16,6 +16,7 @@
   "dependencies": {
     "limiter": "^1.1.0",
     "lodash": "^4.17.4",
-    "request": "^2.80.0"
+    "request": "^2.80.0",
+    "rxjs": "^5.2.0"
   }
 }

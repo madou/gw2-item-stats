@@ -1,8 +1,9 @@
 import * as request from 'request';
+import { Observable } from 'rxjs';
 import { camelCase } from 'lodash';
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 const RateLimiter = require('limiter').RateLimiter;
-var limiter = new RateLimiter(5, 1500); // at most 5 request every 1500 ms
+var limiter = new RateLimiter(10, 1500); // at most 5 request every 1500 ms
 const throttledRequest = function(...requestArgs) {
   limiter.removeTokens(1, function() {
     request.post.apply(this, requestArgs);
@@ -10,6 +11,8 @@ const throttledRequest = function(...requestArgs) {
 };
 
 const WIKI_URL = "https://wiki.guildwars2.com/api.php";
+const CACHE_FILE = "./cache.json";
+let CACHE = undefined;
 
 function getMatches(str, regex) {
   const matches = Object.create(null);
@@ -21,8 +24,45 @@ function getMatches(str, regex) {
   return matches;
 }
 
-function queryTemplate(itemType, rarity, itemLevel) {
-  const queryTemplate = `
+async function initCache() {
+  if ( existsSync(CACHE_FILE) ) {
+    CACHE = JSON.parse(readFileSync(CACHE_FILE).toString('utf-8'));
+  } else {
+    CACHE = await buildSkeleton(false);
+    writeFileSync(CACHE_FILE, JSON.stringify(CACHE));
+  }
+}
+
+function storeCache(itemType: string, rarity: string, itemLevel: string, value: any) {
+  CACHE[itemType][rarity][itemLevel] = value;
+  return new Observable((observer) => {
+    try {
+      writeFileSync(CACHE_FILE, JSON.stringify(CACHE));
+    } catch (err) {
+      observer.error(err);
+    }
+    observer.next(value);
+    observer.complete();
+  })
+  .do((v) => console.log(`written to cache ${rarity} ${itemType} of level ${itemLevel}`));
+}
+
+async function queryTemplate(itemType: string, rarity: string, itemLevel: string) {
+  if ( undefined === CACHE ) {
+    await initCache();
+  }
+
+  if ( CACHE[itemType][rarity][itemLevel] ) {
+    return CACHE[itemType][rarity][itemLevel];
+  }
+
+  return _queryTemplate(itemType, rarity, itemLevel)
+  .switchMap((value) => storeCache(itemType, rarity, itemLevel, value))
+  .toPromise();
+}
+
+function _queryTemplate(itemType, rarity, itemLevel): Observable<any> {
+  const template = `
     {{item stat lookup|type=${itemType}|rarity=${rarity}|level=${itemLevel}}}
     #var:major attribute={{#var:major attribute|0}}
     #var:minor attribute={{#var:minor attribute|0}}
@@ -45,34 +85,45 @@ function queryTemplate(itemType, rarity, itemLevel) {
     #var:max strength={{#var:max strength|0}}
   `;
 
-  return new Promise<string>((resolve, reject) => {
+  return new Observable<string>((observer) => {
       throttledRequest(WIKI_URL, {
         form: {
           action: 'expandtemplates',
           format: 'jsonfm',
-          text: queryTemplate,
+          text: template,
           prop: 'wikitext',
           wrappedhtml: 1,
         }
       }, (err, resp, body) => {
-        err && reject(err);
-        resolve(body);
+        console.log(`pulled ${rarity} ${itemType} of level ${itemLevel}`);
+        if ( err ) {
+          return observer.error(err);
+        }
+
+        if ( resp.statusCode !== 200 ) {
+          return observer.error('Failed request');
+        }
+
+        observer.next(body);
+        observer.complete();
     });
   })
-  .then((v) => JSON.parse(v))
-  .then((v) => v['html'])
-  .then((v) => v.match(/(\{(.|\n)+\})/g)[0])
-  .then((v) => JSON.parse(v))
-  .then((v) => v['expandtemplates'])
-  .then((v) => v['wikitext'])
-  .then((v) => getMatches(v, /#var:(.+?)=([^\n]+)/g))
+  .retry(10)
+  // .do((v) => console.log(v))
+  .map((v) => JSON.parse(v))
+  .map((v) => v['html'])
+  .map((v) => v.match(/(\{(.|\n)+\})/g)[0])
+  .map((v) => JSON.parse(v))
+  .map((v) => v['expandtemplates'])
+  .map((v) => v['wikitext'])
+  .map((v) => getMatches(v, /#var:(.+?)=([^\n]+)/g))
 }
 
 function promiseForObject<T>(
-  object: {[key: string]: Promise<T>}
+  object: {[key: string]: () => Promise<T>}
 ): Promise<{[key: string]: T}> {
   const keys = Object.keys(object);
-  const valuesAndPromises = keys.map(name => object[name]);
+  const valuesAndPromises = keys.map(name => object[name]());
   return Promise.all(valuesAndPromises).then(
     values => values.reduce((resolvedObject, value, i) => {
       resolvedObject[keys[i]] = value;
@@ -81,7 +132,29 @@ function promiseForObject<T>(
   );
 }
 
+function promiseForObjectSerially<T>(
+  object: {[key: string]: Promise<T>}
+): Promise<{[key: string]: T}> {
+  if ( typeof object === 'function' ) {
+    return promiseForObjectSerially(object());
+  }
+
+  const keys = Object.keys(object);
+  return Promise.resolve().then(() => {
+    return keys.reduce((promiseObject, key, i) =>
+      promiseObject.then(async (resolvedObject) => {
+      const value = await object[key];
+      resolvedObject[key] = value;
+      return resolvedObject;
+    }), Promise.resolve({}));
+  });
+}
+
 function promiseForObjectDeep(object, nest) {
+  if ( typeof object === 'function' ) {
+    return promiseForObjectDeep(object(), nest);
+  }
+
   if ( nest > 0 ) {
     const innerObj = Object.keys(object).reduce((newObj, key: string) => {
       return Object.assign(newObj, {
@@ -89,13 +162,13 @@ function promiseForObjectDeep(object, nest) {
       });
     }, {});
 
-    return promiseForObject(innerObj);
+    return promiseForObjectSerially(innerObj);
   }
 
   return promiseForObject(object);
 }
 
-function fetchAll() {
+function buildSkeleton(pullValues: boolean = false) {
   const types = [
     "helm",
     "shoulders",
@@ -143,21 +216,31 @@ function fetchAll() {
         return Object.assign(itemObj, {
           [rarityType]: itemLevels.reduce((rarityObj, itemLevel: number) => {
             return Object.assign(rarityObj, {
-              [itemLevel]: queryTemplate(weaponType, rarityType, itemLevel),
+              [itemLevel.toString()]: pullValues ?
+                () => queryTemplate(weaponType, rarityType, itemLevel.toString()) : null,
             });
-          }),
+          }, {}),
         });
       }, {}),
     });
   }, {});
 
-  return promiseForObjectDeep(allInfo, 2);
+  if ( pullValues ) {
+    return promiseForObjectDeep(allInfo, 2);
+  } else {
+    return Promise.resolve(allInfo);
+  }
+}
+
+function fetchAll() {
+  return buildSkeleton(true);
 }
 
 async function main() {
+  await initCache();
+
   const allInfo = await fetchAll();
-  console.log(JSON.stringify(allInfo));
-  // writeFileSync("./itemstat-db.json", JSON.stringify(allInfo));
+  writeFileSync("./itemstat-db.json", JSON.stringify(allInfo));
 
   //const variables = await queryTemplate('short bow', 'fine', 80);
   //console.log(variables);

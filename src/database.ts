@@ -152,7 +152,6 @@ function _queryTemplate(itemType, rarity, itemLevel): Observable<any> {
     });
   })
   .retry(10)
-  // .do((v) => console.log(v))
   .map((v) => JSON.parse(v))
   .map((v) => v['html'])
   .map((v) => v.match(/(\{(.|\n)+\})/g)[0])
@@ -212,15 +211,15 @@ function promiseForObjectDeep(object, nest) {
 }
 
 function buildSkeleton(pullValues: boolean = false) {
-  const itemLevels = Array.from(Array(80).keys());
+  const itemLevels = Array.from(Array(80).keys()).map((v) => (v+1).toString());
   const allInfo = TYPES.reduce((obj, weaponType: string) => {
     return Object.assign(obj, {
       [weaponType]: RARITIES.reduce((itemObj, rarityType: string) => {
         return Object.assign(itemObj, {
-          [rarityType]: itemLevels.reduce((rarityObj, itemLevel: number) => {
+          [rarityType]: itemLevels.reduce((rarityObj, itemLevel: string) => {
             return Object.assign(rarityObj, {
               [itemLevel.toString()]: pullValues ?
-                () => queryTemplate(weaponType, rarityType, itemLevel.toString()) : null,
+                () => queryTemplate(weaponType, rarityType, itemLevel) : null,
             });
           }, {}),
         });

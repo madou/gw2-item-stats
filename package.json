@@ -1,8 +1,11 @@
 {
-  "name": "gw2itemstats",
-  "version": "0.0.2",
+  "name": "gw2-item-stats",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
+  "author": "",
+  "license": "ISC",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "build-db": "ts-node src/buildDb.ts",
     "prebuild": "npm run build-db",
@@ -11,25 +14,23 @@
     "test": "ts-node test/index.spec.ts",
     "prepublish": "npm test"
   },
-  "author": "",
-  "license": "ISC",
+  "dependencies": {},
   "devDependencies": {
-    "@types/request": "0.0.41",
+    "@types/node": "^8.0.32",
+    "@types/request": "2.0.4",
     "delete-empty": "^1.0.0",
     "dts-bundle": "^0.7.2",
-    "fuse-box": "^1.3.126",
+    "fuse-box": "^2.3.3",
     "ignore-loader": "^0.1.2",
     "json-loader": "^0.5.4",
     "limiter": "^1.1.0",
     "lodash": "^4.17.4",
-    "request": "^2.80.0",
+    "request": "^2.83.0",
     "rxjs": "^5.2.0",
     "ts-loader": "^2.0.1",
-    "ts-node": "^2.1.0",
+    "ts-node": "^3.3.0",
     "typescript": "^2.2.1",
-    "webpack": "^2.2.1",
+    "webpack": "^3.6.0",
     "webpack-node-externals": "^1.5.4"
-  },
-  "dependencies": {},
-  "typings": "dist/index.d.ts"
+  }
 }

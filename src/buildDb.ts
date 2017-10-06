@@ -1,6 +1,6 @@
+import { writeFileSync } from 'fs';
 import { fetchDb } from './database';
 import { DB_FILE } from './loadDb';
-import { writeFileSync } from 'fs';
 
 async function main() {
   const allInfo = await fetchDb();
